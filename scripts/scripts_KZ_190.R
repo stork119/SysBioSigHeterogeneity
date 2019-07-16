@@ -2,9 +2,9 @@
 ### JAK inhibitors KZ 190
 ### ###
 
-#source("scripts/scripts_initialisation.R")
+source("scripts/scripts_initialisation.R")
 source("scripts/scripts_libraries.R")
-library(SysBioSigHeterogeneity)
+#library(SysBioSigHeterogeneity)
 
 #### preparation of data ####
 output.dir <- paste("resources", "output", "JAK", sep = "/")

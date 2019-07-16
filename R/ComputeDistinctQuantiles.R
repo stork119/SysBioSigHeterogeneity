@@ -11,6 +11,7 @@
 #' @export
 ComputeDistinctQuantiles <-
   function(
+    normal.quantiles = TRUE,
     data.control,
     data.saturation,
     response,
@@ -31,47 +32,57 @@ ComputeDistinctQuantiles <-
 
     signal.min <- (data.control %>% dplyr::distinct_(signal))[[signal]]
     signal.max <- (data.saturation %>% dplyr::distinct_(signal))[[signal]]
+    if(normal.quantiles){
 
-    df.res <-
-      GetLogRegParameters(
-        data =
-          (data.control %>% dplyr::select_(signal, response))  %>%
-          rbind(data.saturation %>% dplyr::select_(signal, response)),
-        response = response,
-        signal = signal,
-        signal.list = c(signal.min, signal.max))
+      data.distinct <-
+        (data.control %>% dplyr::select_(signal, response))  %>%
+        rbind(data.saturation %>% dplyr::select_(signal, response)) %>%
+        dplyr::mutate(!! quo_name("level") := !! as.name(signal))
+    } else {
+      df.res <-
+        GetLogRegParameters(
+          data =
+            (data.control %>% dplyr::select_(signal, response))  %>%
+            rbind(data.saturation %>% dplyr::select_(signal, response)),
+          response = response,
+          signal = signal,
+          signal.list = c(signal.min, signal.max))
 
 
-    lr_model <- nnet::multinom(formula = df.res$formula_string,
-                               data = df.res$data,
-                               na.action = na.omit,
-                               maxit = lr_maxit,
-                               MaxNWts = MaxNWts)#,  model = FALSE )
+      lr_model <- nnet::multinom(formula = df.res$formula_string,
+                                 data = df.res$data,
+                                 na.action = na.omit,
+                                 maxit = lr_maxit,
+                                 MaxNWts = MaxNWts)#,  model = FALSE )
 
 
-    lr.fit <-
-      predict(object  = lr_model,
-              newdata = df.res$data)
+      lr.fit <-
+        predict(object  = lr_model,
+                newdata = df.res$data)
 
-    df.res$data$class <- as.numeric(as.character(lr.fit))
+      df.res$data$class <- as.numeric(as.character(lr.fit))
 
-    df.res$data %>%
-      dplyr::rename(level = X) %>%
-      dplyr::rename_(.dots = setNames(
-        object =df.res$response,
-        nm = response)) %>%
-      dplyr::filter(level == class) ->
-      df.res$data
+      df.res$data %>%
+        dplyr::rename(level = X) %>%
+        dplyr::rename_(.dots = setNames(
+          object =df.res$response,
+          nm = response)) %>%
+        dplyr::filter(level == class) ->
+        df.res$data
 
+      df.res$data -> data.distinct
+    }
     fraction.min.bound <-
-      quantile((df.res$data %>%
+      quantile((data.distinct %>%
                   dplyr::filter(level %in% c(signal.min)))[[response]],
                probs = 1 - quantile.prob)[[1]]
 
     fraction.max.bound <-
-      quantile((df.res$data %>%
+      max(
+        fraction.min.bound,
+        quantile((data.distinct %>%
                   dplyr::filter(level %in% c(signal.max)))[[response]],
-               probs = quantile.prob)[[1]]
+               probs = quantile.prob)[[1]])
 
     fractions.bounds <- list(fraction.min.bound = fraction.min.bound,
                 fraction.max.bound = fraction.max.bound

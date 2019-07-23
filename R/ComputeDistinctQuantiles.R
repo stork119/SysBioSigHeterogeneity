@@ -33,7 +33,6 @@ ComputeDistinctQuantiles <-
     signal.min <- (data.control %>% dplyr::distinct_(signal))[[signal]]
     signal.max <- (data.saturation %>% dplyr::distinct_(signal))[[signal]]
     if(normal.quantiles){
-
       data.distinct <-
         (data.control %>% dplyr::select_(signal, response))  %>%
         rbind(data.saturation %>% dplyr::select_(signal, response)) %>%

@@ -3,9 +3,8 @@
 ### ###
 
 
-source("scripts/scripts_initialisation.R")
+# source("scripts/scripts_initialisation.R")
 source("scripts/scripts_libraries.R")
-#library(SysBioSigHeterogeneity)
 
 #### preparation of data ####
 ### !!!
@@ -26,6 +25,13 @@ quantile.prob = 0.1 ### choose probability
 
 ### !!! other parameters
 signal_ <- "stimulation.1.2"
+
+### !!! choose x scale
+# rescale.fun = "factor"
+# rescale.fun.args = list()
+
+rescale.fun = function(x, base){log(x = x, base = base)}
+rescale.fun.args = list(base = exp(1))
 
 ### !!! inhibitors
 inhibitors.list <- c("inhibitor.1.1","inhibitor.1.2",  "inhibitor.1.3")
@@ -57,7 +63,7 @@ color.limits <- c(0,1)
 
   ### Finding distinct quantiles ###
   bounds.df <-
-    ComputeDistinctQuantiles(
+    SysBioSigHeterogeneity::ComputeDistinctQuantiles(
       data.control = data.control,
       data.saturation = data.saturation,
       response = response_,
@@ -67,7 +73,7 @@ color.limits <- c(0,1)
 
   ### CountResponseFractions ###
   data.tiles <-
-    CountResponseFractions(
+    SysBioSigHeterogeneity::CountResponseFractions(
       data = data.all,
       bounds.df = bounds.df,
       response = response_,
@@ -91,6 +97,7 @@ saveRDS(file =  paste(output.dir, paste0("ResponseFractions.rds"), sep = "/"),
 #### plotting ####
 plot.list <- list()
 plot.grid.list <- list()
+inhibitor.i <- 1
 for(inhibitor.i in 1:length(inhibitors.list)){
   inhibitor_ <- inhibitors.list[inhibitor.i]
   inhibitor.name <- inhibitors.names[inhibitor.i]
@@ -103,35 +110,45 @@ for(inhibitor.i in 1:length(inhibitors.list)){
 
   plot.list[[inhibitor_]] <- list()
   plot.list[[inhibitor_]][["pS1"]] <-
-    plotCompletePartialLine(
+    SysBioSigHeterogeneity::plotCompletePartialLine(
       data =
         data.tiles %>%
         dplyr::filter_(paste(signal_, "== max(", signal_,")")) %>%
         dplyr::filter_(inhibitors.filter),
       title = paste(inhibitor.name, "pS1"),
-      x_ = paste("factor(", inhibitor_, ")")
+      x_ =  inhibitor_,
+      xlab_ = inhibitor.name,
+      y_ = "pS1",
+      rescale.fun = rescale.fun,
+      rescale.fun.args = rescale.fun.args
     )
 
   plot.list[[inhibitor_]][["pS3"]] <-
-    plotCompletePartialLine(
+    SysBioSigHeterogeneity::plotCompletePartialLine(
       data =
         data.tiles %>%
         dplyr::filter_(paste(signal_, "== max(", signal_,")")) %>%
         dplyr::filter_(inhibitors.filter),
       title = paste(inhibitor.name, "pS3"),
-      x_ = paste("factor(", inhibitor_, ")"),
-      y_ = "pS3"
+      x_ = inhibitor_,
+      xlab_ = inhibitor.name,
+      y_ = "pS3",
+      rescale.fun = rescale.fun,
+      rescale.fun.args = rescale.fun.args
     )
   plot.list[[inhibitor_]][["pS1-pS3"]] <-
-    plotCompletePartialLine(
+    SysBioSigHeterogeneity::plotCompletePartialLine(
     data =
       data.tiles %>%
       dplyr::filter_(paste(signal_, "== max(", signal_,")")) %>%
       dplyr::filter_(inhibitors.filter),
     title_ = paste(inhibitor.name, "pS1-pS3"),
-    x_ = paste("factor(", inhibitor_, ")"),
+    x_ = inhibitor_,
+    xlab_ = inhibitor.name,
     y_ = "pS1 - pS3",
-    ylim_ = c(-1,1)
+    ylim_ = c(-1,1),
+    rescale.fun = rescale.fun,
+    rescale.fun.args = rescale.fun.args
   )
   plot.grid.list[[inhibitor_]] <-
     cowplot::plot_grid(plotlist = plot.list[[inhibitor_]], nrow = 1)
@@ -141,64 +158,5 @@ plot.grid <-
 
 ggsave(filename = paste(output.dir, paste0("one_dimensional_fractions.pdf"), sep = "/"),
        plot = plot.grid,
-       width = 8,
+       width = 12,
        height = 12)
-
-
-
-#
-# expand.grid(x = 1:length(inhibitors.list),
-#             y = 1:length(inhibitors.list)) %>%
-#   dplyr::filter(x < y) ->
-#   combinations.df
-#
-# foreach(combination.i = 1:nrow(combinations.df)) %do% {
-#   axes.x.i <- combinations.df[combination.i,]$x
-#   axes.y.i <- combinations.df[combination.i,]$y
-#
-#   axes.x <- inhibitors.list[axes.x.i]
-#   axes.y <- inhibitors.list[axes.y.i]
-#   axes.x.name <- inhibitors.names[axes.x.i]
-#   axes.y.name <- inhibitors.names[axes.y.i]
-#
-#   title_ <-
-#     paste(title.main, ":",
-#           paste(inhibitors.names[-which(inhibitors.list %in% c(axes.x,axes.y))],
-#                 "= 0"))
-#
-#
-#   ggplot(data =
-#            data.tiles %>%
-#            dplyr::filter(stimulation.1.2 != 0) %>%
-#            dplyr::filter_(
-#              paste(inhibitors.list[-which(inhibitors.list %in% c(axes.x,axes.y))],
-#                    " == 0")),
-#          mapping = aes_string(
-#            x = paste("factor(", axes.x, ")"),
-#            y = paste("factor(", axes.y, ")"),
-#            fill = "prob",
-#            label = "round(prob, 2)"
-#          )) +
-#     geom_tile(color = "white") +
-#     viridis::scale_fill_viridis(
-#       name = "Cells fraction",
-#       limits = color.limits) +
-#     ggtitle(title_)+
-#     xlab(axes.x.name)+
-#     ylab(axes.y.name)+
-#     SysBioSigTheme::theme_sysbiosig()+
-#     geom_text(size = 4) +
-#     facet_grid("~type")
-#
-# } ->
-#   g.inhibitors.list
-#
-# g.inhibitor <-
-#   cowplot::plot_grid(
-#     plotlist = g.inhibitors.list,
-#     ncol = 1)
-#
-# ggsave(filename = paste(output.dir, paste0(title.main, "_fractions.pdf"), sep = "/"),
-#        plot = g.inhibitor,
-#        width = 8,
-#        height = 12)

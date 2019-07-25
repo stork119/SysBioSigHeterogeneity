@@ -2,9 +2,7 @@
 ### JAK inhibitors KZ 190
 ### ###
 
-source("scripts/scripts_initialisation.R")
 source("scripts/scripts_libraries.R")
-#library(SysBioSigHeterogeneity)
 
 #### preparation of data ####
 experiment.id <- "KZ_190"
@@ -81,7 +79,7 @@ foreach(response.i = 1:nrow(response.df)) %do% {
 
   ### Finding distinct quantiles ###
   bounds.df <-
-    ComputeDistinctQuantiles(
+    SysBioSigHeterogeneity::ComputeDistinctQuantiles(
       data.control = data.control,
       data.saturation = data.saturation,
       response = response_,
@@ -91,7 +89,7 @@ foreach(response.i = 1:nrow(response.df)) %do% {
 
   ### CountResponseFractions ###
   data.tiles <-
-    CountResponseFractions(
+    SysBioSigHeterogeneity::CountResponseFractions(
       data = data.all,
       bounds.df = bounds.df,
       response = response_,
@@ -113,6 +111,7 @@ foreach(response.i = 1:nrow(response.df)) %do% {
 saveRDS(file =  paste(output.dir, paste0("ResponseFractions.rds"), sep = "/"),
         object = data.tiles)
 #### plotting ####
+
 title.main <- ""
 expand.grid(x = 1:length(inhibitors.list),
             y = 1:length(inhibitors.list),
@@ -124,42 +123,42 @@ expand.grid(x = 1:length(inhibitors.list),
 foreach(combination.i = 1:nrow(combinations.df)) %do% {
   axes.x.i <- combinations.df[combination.i,]$x
   axes.y.i <- combinations.df[combination.i,]$y
-
-  axes.x <- inhibitors.list[axes.x.i]
-  axes.y <- inhibitors.list[axes.y.i]
-  axes.x.name <- inhibitors.names[axes.x.i]
-  axes.y.name <- inhibitors.names[axes.y.i]
-
-  response.type_ <- combinations.df[combination.i,]$response.type
+  response.type_ = combinations.df[combination.i,]$response.type
   if(!(response.type_ %in% response.type.list)){
-    color.limits <- c(-1,1)
+    color.limits.tmp <- c(-1,1)
+    scale_colors_fun <-
+      viridis::scale_fill_viridis(
+        name = "Cells fraction",
+        limits = color.limits.tmp, option = "A")
+  } else {
+    scale_colors_fun <-
+      viridis::scale_fill_viridis(
+        name = "Cells fraction",
+        limits = color.limits.tmp)
+    color.limits.tmp <- color.limits
   }
-  title_ <-
-    paste(response.type_, ":",
-          paste(inhibitors.names[-which(inhibitors.list %in% c(axes.x,axes.y))],
-                "= 0"))
-  ggplot(data =
-           data.tiles %>%
-           dplyr::filter(stimulation.1.2 != 0) %>%
-           dplyr::filter_(
-             paste(inhibitors.list[-which(inhibitors.list %in% c(axes.x,axes.y))],
-                   " == 0")),
-         mapping = aes_string(
-           x = paste("factor(", axes.x, ")"),
-           y = paste("factor(", axes.y, ")"),
-           fill = response.type_,
-           label = paste("round(", response.type_, ", 2)")
-         )) +
-    geom_tile(color = "white") +
-    viridis::scale_fill_viridis(
-      name = "Cells fraction",
-      limits = color.limits) +
-    ggtitle(title_)+
-    xlab(axes.x.name)+
-    ylab(axes.y.name)+
-    SysBioSigTheme::theme_sysbiosig()+
-    geom_text(size = 4) +
-    facet_grid("~type")
+
+  SysBioSigHeterogeneity::plotCompletePartialCube(
+    data =
+      data.tiles %>%
+      dplyr::filter(stimulation.1.2 != 0) %>%
+      dplyr::filter_(
+        paste(inhibitors.list[-which(inhibitors.list %in%
+                                       c(inhibitors.list[axes.x.i],
+                                         inhibitors.list[axes.y.i]))],
+              " == 0")),
+    axes.x = inhibitors.list[axes.x.i],
+    axes.y = inhibitors.list[axes.y.i],
+    axes.x.name = inhibitors.names[axes.x.i],
+    axes.y.name = inhibitors.names[axes.y.i],
+    response.type_ = combinations.df[combination.i,]$response.type,
+    color.limits = color.limits.tmp,
+    scale_colors_fun = scale_colors_fun,
+    title_ =
+      paste(response.type_, ":",
+            paste(inhibitors.names[-which(inhibitors.list %in% c(axes.x,axes.y))],
+                  "= 0"))
+  )
 } ->
   g.inhibitors.list
 

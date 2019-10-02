@@ -1,5 +1,5 @@
 ### ###
-### JAK inhibitors KZ 190
+### JAK inhibitors KZ 190 KOSTKA
 ### ###
 
 source("scripts/scripts_libraries.R")
@@ -110,6 +110,7 @@ foreach(response.i = 1:nrow(response.df)) %do% {
   data.tiles
 saveRDS(file =  paste(output.dir, paste0("ResponseFractions.rds"), sep = "/"),
         object = data.tiles)
+
 #### plotting ####
 
 title.main <- ""
@@ -156,7 +157,8 @@ foreach(combination.i = 1:nrow(combinations.df)) %do% {
     scale_colors_fun = scale_colors_fun,
     title_ =
       paste(response.type_, ":",
-            paste(inhibitors.names[-which(inhibitors.list %in% c(axes.x,axes.y))],
+            paste(inhibitors.names[-which(inhibitors.list %in% c(inhibitors.list[axes.x.i],
+                                                                 inhibitors.list[axes.y.i]))],
                   "= 0"))
   )
 } ->
@@ -171,3 +173,124 @@ ggsave(filename = paste(output.dir, paste0("tiles_fractions.pdf"), sep = "/"),
        plot = g.inhibitor,
        width = 8,
        height = 24)
+
+#### curves lines ####
+expand.grid(
+  inhibitor.one = 1:length(inhibitors.list),
+  inhibitor.two = 1:length(inhibitors.list),
+  stringsAsFactors = FALSE
+) %>% dplyr::filter(
+  inhibitor.one < inhibitor.two
+) -> inhibitor.pairs.df
+
+foreach(inhibitor.pair.i = 1:nrow(inhibitor.pairs.df)) %do% {
+  inhibitor.one <- inhibitors.list[inhibitor.pairs.df[inhibitor.pair.i,]$inhibitor.one]
+  inhibitor.two <- inhibitors.list[inhibitor.pairs.df[inhibitor.pair.i,]$inhibitor.two]
+  inhibitor.three.name <- inhibitors.names[-as.numeric(inhibitor.pairs.df[inhibitor.pair.i,])]
+  inhibitor.three <- inhibitors.list[-as.numeric(inhibitor.pairs.df[inhibitor.pair.i,])]
+  data.tiles %>%
+    dplyr::filter_(
+      paste(inhibitor.one, "==", 0, "&",
+            inhibitor.two, "==", 0, "&",
+            signal_, "==", "max(", signal_,")")
+    ) %>%
+    dplyr::mutate(group = paste(inhibitor.three.name)) %>%
+    dplyr::mutate_(inhibitor = inhibitor.three)
+} %>%
+  do.call(
+    what = rbind,
+    args = .
+  ) ->
+  data.tiles.individual
+
+foreach(inhibitor.pair.i = 1:nrow(inhibitor.pairs.df)) %do% {
+  inhibitor.one <- inhibitors.list[inhibitor.pairs.df[inhibitor.pair.i,]$inhibitor.one]
+  inhibitor.two <- inhibitors.list[inhibitor.pairs.df[inhibitor.pair.i,]$inhibitor.two]
+  inhibitor.three <- inhibitors.list[-as.numeric(inhibitor.pairs.df[inhibitor.pair.i,])]
+  data.tiles %>%
+    dplyr::filter_(
+      paste(paste(inhibitor.three, "==", 0, collapse = " & "), "&",
+            inhibitor.two, "==", inhibitor.one, "&",
+            signal_, "==", "max(", signal_,")")
+    )  %>%
+    dplyr::mutate(group =
+                    paste(
+                      inhibitors.names[inhibitor.pairs.df[inhibitor.pair.i,]$inhibitor.one],
+                      inhibitors.names[inhibitor.pairs.df[inhibitor.pair.i,]$inhibitor.two]
+
+    )) %>%
+    dplyr::mutate_(inhibitor = inhibitor.one)
+}  %>%
+  do.call(
+    what = rbind,
+    args = .
+  ) ->
+  data.tiles.pairs
+
+
+data.tiles %>%
+  dplyr::filter_(
+    paste(signal_, "==", "max(", signal_,")")
+  ) %>%
+  dplyr::filter_(
+    paste((inhibitor.pairs.df %>%
+      dplyr::mutate(command =
+                      paste(inhibitors.list[inhibitor.one],
+                            inhibitors.list[inhibitor.two],
+                            sep = "==")))[["command"]],
+      collapse = "&")
+  )  %>%
+  dplyr::mutate(group =
+                  paste(
+                    inhibitors.names,
+                    collapse = " "
+                  )) %>%
+  dplyr::mutate_(inhibitor = inhibitors.list[1])->
+  data.tiles.group
+
+do.call(
+  what = rbind,
+  args = list(data.tiles.individual,
+              data.tiles.pairs,
+              data.tiles.group)
+) -> data.tiles.curves
+
+
+
+g.curve.pS <-
+  plotCompletePartialLine(
+  data =
+    data.tiles.curves %>%
+    dplyr::select(type, pS1, pS3, group, inhibitor) %>%
+    #dplyr::mutate(pS1pS3 = pS1 - pS3) %>%
+    reshape2::melt(
+      id.vars = c("inhibitor", "type", "group")
+    ),
+  title_ = "",
+  x_ = "inhibitor",
+  y_ = "value",
+           group_ = "group",
+           ylim_ = c(0,1),
+           xlab_ = "inhibitor",
+  rescale.fun = "log") +
+  facet_grid(variable~type)
+
+g.curve.pSdiff <-
+  plotCompletePartialLine(
+    data =
+      data.tiles.curves %>%
+      dplyr::select(type, pS1, pS3, group, inhibitor) %>%
+      dplyr::mutate(pS1pS3 = pS1 - pS3) %>%
+      dplyr::select(-pS1, -pS3) %>%
+      reshape2::melt(
+        id.vars = c("inhibitor", "type", "group")
+      ),
+    title_ = "",
+    x_ = "inhibitor",
+    y_ = "value",
+    group_ = "group",
+    ylim_ = c(-0.5,0.5),
+    xlab_ = "inhibitor",
+    rescale.fun = "log") +
+  facet_grid(variable~type)
+

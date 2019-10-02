@@ -9,7 +9,9 @@ plotCompletePartialLine <-
            color_ = group_,
            ylim_ = c(0,1),
            xlab_ = "inhibitor",
+           ylab_ = NULL,
            scale_colors_fun = viridis::scale_color_viridis(discrete = TRUE, end = 0.9),
+           size.line = 1,
            ...){
 
         col.rescaled <- "signal_rescaled"
@@ -34,11 +36,16 @@ plotCompletePartialLine <-
                    y = y_,
                    group = group_,
                    color = color_)) +
-      ggplot2::geom_line() +
+      ggplot2::geom_line(size = size.line)  +
       SysBioSigTheme::theme_sysbiosig() +
       scale_colors_fun +
       ggplot2::coord_cartesian(ylim = ylim_) +
       ggplot2::ggtitle(title_)
+
+      if(!is.null(ylab_)){
+        g.plot <-
+          g.plot + ylab(ylab_)
+      }
 
     if(!is.factor(signal.rescale.df[[col.rescaled]])){
       g.plot +
@@ -58,5 +65,5 @@ plotCompletePartialLine <-
         )->
         g.plot
     }
-    return(g.plot)
+   return(g.plot)
   }

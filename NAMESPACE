@@ -2,6 +2,10 @@
 
 export(ComputeDistinctQuantiles)
 export(CountResponseFractions)
+export(DataFiltering)
+export(calculateInhibitionCurve)
+export(getScaleY.Comparison)
 export(plotCompletePartialCube)
 export(plotCompletePartialLine)
+export(rescaleDataResponse.DataFrame)
 export(rescaleSignalsValues.DataFrame)

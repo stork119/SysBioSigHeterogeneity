@@ -1,7 +1,6 @@
 ### ###
-### script_KZ_191
+### script_KZ_191 Krzywe
 ### ###
-
 
 # source("scripts/scripts_initialisation.R")
 source("scripts/scripts_libraries.R")
@@ -95,6 +94,12 @@ color.limits <- c(0,1)
 saveRDS(file =  paste(output.dir, paste0("ResponseFractions.rds"), sep = "/"),
        object = data.tiles)
 #### plotting ####
+
+### !!!
+type.list <- c("partial", "complete")
+# type.list <- c("partial") # gdy chcesz tylko partial
+# type.list <- c("complete") # gdy chcesz tylko complete
+
 plot.list <- list()
 plot.grid.list <- list()
 inhibitor.i <- 1
@@ -114,7 +119,8 @@ for(inhibitor.i in 1:length(inhibitors.list)){
       data =
         data.tiles %>%
         dplyr::filter_(paste(signal_, "== max(", signal_,")")) %>%
-        dplyr::filter_(inhibitors.filter),
+        dplyr::filter_(inhibitors.filter) %>%
+        dplyr::filter(type %in% type.list),
       title = paste(inhibitor.name, "pS1"),
       x_ =  inhibitor_,
       xlab_ = inhibitor.name,
@@ -128,7 +134,8 @@ for(inhibitor.i in 1:length(inhibitors.list)){
       data =
         data.tiles %>%
         dplyr::filter_(paste(signal_, "== max(", signal_,")")) %>%
-        dplyr::filter_(inhibitors.filter),
+        dplyr::filter_(inhibitors.filter) %>%
+        dplyr::filter(type %in% type.list),
       title = paste(inhibitor.name, "pS3"),
       x_ = inhibitor_,
       xlab_ = inhibitor.name,
@@ -141,7 +148,8 @@ for(inhibitor.i in 1:length(inhibitors.list)){
     data =
       data.tiles %>%
       dplyr::filter_(paste(signal_, "== max(", signal_,")")) %>%
-      dplyr::filter_(inhibitors.filter),
+      dplyr::filter_(inhibitors.filter) %>%
+      dplyr::filter(type %in% type.list),
     title_ = paste(inhibitor.name, "pS1-pS3"),
     x_ = inhibitor_,
     xlab_ = inhibitor.name,

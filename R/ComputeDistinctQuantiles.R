@@ -30,6 +30,19 @@ ComputeDistinctQuantiles <-
     ...
   ){
 
+    SysBioSigHeterogeneity::DataFiltering(
+      data = data.control,
+      response = response,
+      ...
+    ) ->
+      data.control
+
+    SysBioSigHeterogeneity::DataFiltering(
+      data = data.saturation,
+      response = response,
+      ...
+    ) ->
+      data.saturation
     signal.min <- (data.control %>% dplyr::distinct_(signal))[[signal]]
     signal.max <- (data.saturation %>% dplyr::distinct_(signal))[[signal]]
     if(normal.quantiles){

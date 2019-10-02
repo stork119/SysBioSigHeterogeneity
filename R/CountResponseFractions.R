@@ -16,6 +16,12 @@ CountResponseFractions <-
     distincting.colnames,
     ...
   ) {
+  SysBioSigHeterogeneity::DataFiltering(
+      data = data,
+      response = response,
+      ...
+    ) ->
+      data
 
 bounds.df %>%
   dplyr::arrange(bound) ->
